@@ -69,6 +69,7 @@ jobs:
           gcc tests/test.c -o test_runner
           echo "Running C Test Cases..."
           ./test_runner | tee test_results.log
+          exit ${PIPESTATUS[0]}
 
       - name: Compile and Run C++ Tests
         if: env.LANGUAGE == 'C++'
@@ -76,12 +77,14 @@ jobs:
           g++ tests/test.cpp -o test_runner_cpp
           echo "Running C++ Test Cases..."
           ./test_runner_cpp | tee test_results.log
+          exit ${PIPESTATUS[0]}
 
       - name: Run Python Tests
         if: env.LANGUAGE == 'Python'
         run: |
           echo "Running Python Test Cases..."
           python3 tests/test.py | tee test_results.log
+          exit ${PIPESTATUS[0]}
 
       - name: Compile and Run Java Tests
         if: env.LANGUAGE == 'Java'
@@ -90,6 +93,7 @@ jobs:
           javac -d out $(find solutions -name "*.java") $(find tests -name "*.java")
           echo "Running Java Test Cases..."
           java -cp out Main | tee test_results.log
+          exit ${PIPESTATUS[0]}
 
       - name: Upload Test Results
         if: always()
