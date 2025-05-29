@@ -1,0 +1,99 @@
+name: Run Code Tests
+
+on:
+  push:
+    paths:
+      - "solutions/**"
+  pull_request:
+    paths:
+      - "tests/**"
+
+jobs:
+  run-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2 # Ensure previous commit is available
+
+      - name: Detect Changed Files
+        id: changed-files
+        run: |
+          BEFORE_COMMIT="${{ github.event.before }}"
+          if [ -z "$BEFORE_COMMIT" ] || ! git cat-file -e "$BEFORE_COMMIT"^{commit}; then
+            BEFORE_COMMIT=$(git rev-parse HEAD~1)  # Use last commit as fallback
+          fi
+
+          CHANGED_FILES=$(git diff --name-only "$BEFORE_COMMIT" HEAD | grep '^solutions/')
+          echo "Detected changed files: $CHANGED_FILES"
+
+          if [ -z "$CHANGED_FILES" ]; then
+            echo "No file changes detected. Exiting..."
+            exit 1
+          fi
+
+          echo "CHANGED_FILES=$(echo "$CHANGED_FILES" | tr '\n' ' ')" >> $GITHUB_ENV
+
+      - name: Determine File Type
+        id: determine-file
+        run: |
+          for file in $CHANGED_FILES; do
+            case "$file" in
+              *.c) echo "LANGUAGE=C" >> $GITHUB_ENV ;;
+              *.cpp) echo "LANGUAGE=C++" >> $GITHUB_ENV ;;
+              *.py) echo "LANGUAGE=Python" >> $GITHUB_ENV ;;
+              *.java) echo "LANGUAGE=Java" >> $GITHUB_ENV ;;
+            esac
+          done
+
+      - name: Install C Dependencies
+        if: env.LANGUAGE == 'C'
+        run: sudo apt update && sudo apt install -y gcc
+
+      - name: Install C++ Dependencies
+        if: env.LANGUAGE == 'C++'
+        run: sudo apt update && sudo apt install -y g++
+
+      - name: Install Python Dependencies
+        if: env.LANGUAGE == 'Python'
+        run: sudo apt update && sudo apt install -y python3
+
+      - name: Install Java Dependencies
+        if: env.LANGUAGE == 'Java'
+        run: sudo apt update && sudo apt install -y openjdk-17-jdk
+
+      - name: Compile and Run C Tests
+        if: env.LANGUAGE == 'C'
+        run: |
+          gcc tests/test.c -o test_runner
+          echo "Running C Test Cases..."
+          ./test_runner | tee test_results.log
+
+      - name: Compile and Run C++ Tests
+        if: env.LANGUAGE == 'C++'
+        run: |
+          g++ tests/test.cpp -o test_runner_cpp
+          echo "Running C++ Test Cases..."
+          ./test_runner_cpp | tee test_results.log
+
+      - name: Run Python Tests
+        if: env.LANGUAGE == 'Python'
+        run: |
+          echo "Running Python Test Cases..."
+          python3 tests/test.py | tee test_results.log
+
+      - name: Compile and Run Java Tests
+        if: env.LANGUAGE == 'Java'
+        run: |
+          mkdir -p out
+          javac -d out $(find solutions -name "*.java") $(find tests -name "*.java")
+          echo "Running Java Test Cases..."
+          java -cp out Main | tee test_results.log
+
+      - name: Upload Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: test_results.log
