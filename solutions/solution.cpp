@@ -12,5 +12,6 @@ public:
     int sumRange(int left, int right)
     {
         // write your code here
+        return 0;
     }
 };
