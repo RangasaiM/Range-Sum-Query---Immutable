@@ -92,7 +92,7 @@ jobs:
           mkdir -p out
           javac -d out $(find solutions -name "*.java") $(find tests -name "*.java")
           echo "Running Java Test Cases..."
-          java -cp out Main | tee test_results.log
+          java -cp out tests.Main | tee test_results.log
           exit ${PIPESTATUS[0]}
 
       - name: Upload Test Results
